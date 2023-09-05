@@ -10,7 +10,7 @@ module.exports = async (request: Request, response: Response) => {
     if (request.method === 'GET') {
       // 获取Azure TTS声音列表
       const listResponse = await axios.get(
-        `https://${AZURE_REGION}.api.cognitive.microsoft.com/cognitiveservices/voices/list`,
+        `https://${AZURE_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
         {
           headers: {
             'Ocp-Apim-Subscription-Key': AZURE_TTS_KEY,
