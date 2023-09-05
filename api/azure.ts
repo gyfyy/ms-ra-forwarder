@@ -1,73 +1,62 @@
-import axios from 'axios'
-import { Request, Response } from 'express'
-import { service, FORMAT_CONTENT_TYPE } from '../service/azure'
-import { retry } from '../retry'
+import axios from 'axios';
+import { Request, Response } from 'express';
+
+// 替换为您的Azure TTS服务密钥和区域
+const AZURE_TTS_KEY = '4ee35e879d0f4d968b3c24ece7ae5a40';
+const AZURE_REGION = 'eastasia';
 
 module.exports = async (request: Request, response: Response) => {
   try {
     if (request.method === 'GET') {
-      let listResponse = await axios.get(
-        'https://eastus.api.speech.microsoft.com/cognitiveservices/voices/list',
+      // 获取Azure TTS声音列表
+      const listResponse = await axios.get(
+        `https://${AZURE_REGION}.api.cognitive.microsoft.com/cognitiveservices/voices/list`,
         {
-          headers : {
-            'origin':'https://azure.microsoft.com',
-          }
+          headers: {
+            'Ocp-Apim-Subscription-Key': AZURE_TTS_KEY,
+          },
         }
-      )
-      let data = listResponse.data
-      if(!data) {
-        console.error('获取声音列表失败')
-        response.status(500).json('获取声音列表失败')
-        return
+      );
+
+      const data = listResponse.data;
+      if (!data) {
+        console.error('获取声音列表失败');
+        response.status(500).json('获取声音列表失败');
+        return;
       }
+
       response
         .status(200)
         .setHeader('Content-Type', 'application/json; charset=utf-8')
-        .end(JSON.stringify(data))
+        .json(data);
     } else {
-      console.debug(`请求正文：${request.body}`)
-      let token = process.env.TOKEN
-      if (token) {
-        let authorization = request.headers['authorization']
-        if (authorization != `Bearer ${token}`) {
-          console.error('无效的TOKEN')
-          response.status(401).json('无效的TOKEN')
-          return
-        }
-      }
+      console.debug(`请求正文：${request.body}`);
 
-      let format =
-        request.headers['format'] || 'audio-16khz-32kbitrate-mono-mp3'
-      if (Array.isArray(format)) {
-        throw `无效的音频格式：${format}`
-      }
-      if (!FORMAT_CONTENT_TYPE.has(format)) {
-        throw `无效的音频格式：${format}`
-      }
+      // 在此处处理文本到语音转换请求
+      // 使用 Azure TTS 服务将 ssml 转换为音频并返回
 
-      let ssml = request.body
-      if (ssml == null) {
-        throw `转换参数无效`
-      }
-      let result = await retry(
-        async () => {
-          let result = await service.convert(ssml, format as string)
-          return result
-        },
-        3,
-        (index, error) => {
-          console.warn(`第${index}次转换失败：${error}`)
-        },
-        '服务器多次尝试后转换失败',
-      )
-      response.sendDate = true
-      response
-        .status(200)
-        .setHeader('Content-Type', FORMAT_CONTENT_TYPE.get(format as string))
-      response.end(result)
+      // 示例代码：
+      // const ssml = request.body;
+      // const format = request.headers['format'] || 'audio-16khz-32kbitrate-mono-mp3';
+      // const ttsResponse = await axios.post(
+      //   `https://${AZURE_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
+      //   ssml,
+      //   {
+      //     headers: {
+      //       'Content-Type': 'application/ssml+xml',
+      //       'Authorization': `Bearer ${AZURE_TTS_KEY}`,
+      //     },
+      //     responseType: 'arraybuffer',
+      //   }
+      // );
+
+      // 处理 ttsResponse 并将结果返回给客户端
+
+      // 注意：上述示例中的 URL 和请求头可能需要根据 Azure TTS 服务的实际配置进行调整
+
     }
   } catch (error) {
-    console.error(`发生错误, ${error.message}`)
-    response.status(503).json(error)
+    console.error(`发生错误, ${error.message}`);
+    response.status(503).json(error);
   }
-}
+};
