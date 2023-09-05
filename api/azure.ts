@@ -10,7 +10,7 @@ module.exports = async (request: Request, response: Response) => {
     if (request.method === 'GET') {
       // 获取Azure TTS声音列表
       const listResponse = await axios.get(
-        `https://${AZURE_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
+        `https://${AZURE_REGION}.tts.speech.microsoft.com/cognitiveservices/v1/voices/list`,
         {
           headers: {
             'Ocp-Apim-Subscription-Key': AZURE_TTS_KEY,
@@ -35,25 +35,36 @@ module.exports = async (request: Request, response: Response) => {
       // 在此处处理文本到语音转换请求
       // 使用 Azure TTS 服务将 ssml 转换为音频并返回
 
-      // 示例代码：
-      // const ssml = request.body;
-      // const format = request.headers['format'] || 'audio-16khz-32kbitrate-mono-mp3';
-      // const ttsResponse = await axios.post(
-      //   `https://${AZURE_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
-      //   ssml,
-      //   {
-      //     headers: {
-      //       'Content-Type': 'application/ssml+xml',
-      //       'Authorization': `Bearer ${AZURE_TTS_KEY}`,
-      //     },
-      //     responseType: 'arraybuffer',
-      //   }
-      // );
+      const ssml = request.body;
+      const format = 'audio-16khz-128kbitrate-mono-mp3'; // 设置音频格式
+      const ttsResponse = await axios.post(
+        `https://${AZURE_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
+        ssml,
+        {
+          headers: {
+            'Content-Type': 'application/ssml+xml',
+            'Ocp-Apim-Subscription-Key': AZURE_TTS_KEY,
+            'X-Microsoft-OutputFormat': format,
+            'User-Agent': 'yd',
+          },
+          responseType: 'arraybuffer',
+        }
+      );
 
       // 处理 ttsResponse 并将结果返回给客户端
+      const audioData = ttsResponse.data;
 
-      // 注意：上述示例中的 URL 和请求头可能需要根据 Azure TTS 服务的实际配置进行调整
+      if (!audioData) {
+        console.error('语音转换失败');
+        response.status(500).json('语音转换失败');
+        return;
+      }
 
+      // 返回音频数据
+      response
+        .status(200)
+        .setHeader('Content-Type', 'audio/mpeg')
+        .send(audioData);
     }
   } catch (error) {
     console.error(`发生错误, ${error.message}`);
